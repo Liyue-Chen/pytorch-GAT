@@ -18,7 +18,7 @@ class GAT(torch.nn.Module):
     """
 
     def __init__(self, num_of_layers, num_heads_per_layer, num_features_per_layer, add_skip_connection=True, bias=True,
-                 dropout=0.6, layer_type=LayerType.IMP3, log_attention_weights=False):
+                 dropout=0.6, layer_type=LayerType.IMP3, log_attention_weights=False, nparts=None):
         super().__init__()
         assert num_of_layers == len(num_heads_per_layer) == len(num_features_per_layer) - 1, f'Enter valid arch params.'
 
@@ -41,13 +41,16 @@ class GAT(torch.nn.Module):
             gat_layers.append(layer)
 
         self.gat_net = nn.Sequential(
-            *gat_layers,
+            *gat_layers
         )
+
+        self.output_layer = nn.Linear(num_features_per_layer[i+1], nparts, bias=True)
 
     # data is just a (in_nodes_features, topology) tuple, I had to do it like this because of the nn.Sequential:
     # https://discuss.pytorch.org/t/forward-takes-2-positional-arguments-but-3-were-given-for-nn-sqeuential-with-linear-layers/65698
     def forward(self, data):
-        return self.gat_net(data)
+        graph_out, edge_info = self.gat_net(data)
+        return torch.softmax((self.output_layer(graph_out)),dim=1)
 
 
 class GATLayer(torch.nn.Module):
@@ -253,6 +256,7 @@ class GATLayerImp3(GATLayer):
         #
 
         out_nodes_features = self.skip_concat_bias(attentions_per_edge, in_nodes_features, out_nodes_features)
+        #print("out_nodes_features:",out_nodes_features.shape)
         return (out_nodes_features, edge_index)
 
     #

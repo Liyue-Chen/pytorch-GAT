@@ -1,0 +1,9 @@
+# run shell
+python training_node_embedding.py --enable_tensorboard
+
+python training_whole_graph.py --enable_tensorboard
+
+rm -rf runs/*
+
+# vis val loss
+tensorboard --logdir=runs
